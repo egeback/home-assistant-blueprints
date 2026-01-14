@@ -10,7 +10,7 @@ blueprint:
       description: "Switch button"
       selector:
         entity:
-          # device_class: states
+          device_class: action
           # event: {}
           multiple: true
 
