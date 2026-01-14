@@ -45,11 +45,8 @@ max: 10
 
 trigger:
 - platform: state
-  entity_id: !input 'button_on'
-  id: B1
-- platform: state
-  entity_id: !input 'button_off'
-  id: B2
+  entity_id: !input 'sunricher-switch-button1'
+  id: button
 
 actions:
   - variables:
