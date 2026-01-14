@@ -11,7 +11,7 @@ blueprint:
       selector:
         entity:
           # device_class: states
-          event: {}
+          # event: {}
           multiple: true
 
     button_on:
