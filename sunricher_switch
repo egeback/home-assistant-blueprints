@@ -59,17 +59,21 @@ actions:
         sequence: !input 'button_off'
       - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
         sequence:
-      - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
-        sequence:
-        - repeat:
+          - repeat:
               until:
                 - condition: template
                   value_template: "{{ repeat.index > 60 }}"
               sequence:
-                - device_id: 84bf4093f80710b7d8144fd2112290c5
-                  domain: light
-                  entity_id: d8a6c0c92c0d8922407eb4d44fa7ee07
-                  type: brightness_decrease
+                sequence: !input 'button_on_repeat'
+                - delay: "00:00:00.10"
+      - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
+        sequence:
+          - repeat:
+              until:
+                - condition: template
+                  value_template: "{{ repeat.index > 60 }}"
+              sequence:
+                sequence: !input 'button_off_repeat'
                 - delay: "00:00:00.10"
       - conditions: "{{ switch_to_state == 'level_control_stop' }}"
         sequence:
