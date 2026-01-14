@@ -56,16 +56,7 @@ actions:
       - conditions: "{{ switch_to_state == 'on' }}"
         sequence: !input 'button_on'
       - conditions: "{{ switch_to_state == 'off' }}"
-        - repeat:
-              until:
-                - condition: template
-                  value_template: "{{ repeat.index > 60 }}"
-              sequence:
-                - device_id: 84bf4093f80710b7d8144fd2112290c5
-                  domain: light
-                  entity_id: d8a6c0c92c0d8922407eb4d44fa7ee07
-                  type: brightness_increase
-                - delay: "00:00:00.10"
+        sequence: !input 'button_off'
       - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
         sequence:
       - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
