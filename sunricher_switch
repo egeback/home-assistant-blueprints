@@ -10,7 +10,7 @@ blueprint:
       description: "Switch button"
       selector:
         entity:
-          domain: action
+          domain: actions
           # event: {}
           multiple: true
 
