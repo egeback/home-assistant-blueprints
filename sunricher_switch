@@ -56,9 +56,19 @@ actions:
       - conditions: "{{ switch_to_state == 'on' }}"
         sequence: !input 'button_on'
       - conditions: "{{ switch_to_state == 'off' }}"
-        sequence: !input 'button_off'
+        sequence:
+          - repeat:
+              until: "{{ repeat.index > 60 }}"
+              sequence:
+                - !input 'button_off_repeat'
+                - delay: "00:00:00.10"
       - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
-        sequence: !input 'button_on_repeat'
+        sequence:
+          - repeat:
+              until: "{{ repeat.index > 60 }}"
+              sequence:
+                - !input 'button_off_repeat'
+                - delay: "00:00:00.10"
       - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
         sequence: !input 'button_off_repeat'
       - conditions: "{{ switch_to_state == 'level_control_stop' }}"
