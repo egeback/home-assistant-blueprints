@@ -58,23 +58,9 @@ actions:
       - conditions: "{{ switch_to_state == 'off' }}"
         sequence: !input 'button_off'
       - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
-        sequence:
-          - repeat:
-              until:
-                - condition: template
-                  value_template: "{{ repeat.index > 60 }}"
-              sequence:
-                sequence: !input 'button_on_repeat'
-                - delay: "00:00:00.10"
+        sequence: !input 'button_on_repeat'
       - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
-        sequence:
-          - repeat:
-              until:
-                - condition: template
-                  value_template: "{{ repeat.index > 60 }}"
-              sequence:
-                sequence: !input 'button_off_repeat'
-                - delay: "00:00:00.10"
+        sequence: !input 'button_off_repeat'
       - conditions: "{{ switch_to_state == 'level_control_stop' }}"
         sequence:
           - choose:
