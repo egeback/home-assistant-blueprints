@@ -27,13 +27,13 @@ blueprint:
       selector:
         action: {}
         
-    button_on_long:
+    button_on_repeat:
       name: Long Release 1
       description: Action to run on button upper-left long release
       default: []
       selector:
         action: {}
-    button_off_long:
+    button_off_repeat:
       name: Long Release 2
       description: Action to run on button lower-left long release
       default: []
@@ -51,10 +51,23 @@ trigger:
   entity_id: !input 'button_off'
   id: B2
 
-action:
-- variables:
-    switch_to_state: '{{ trigger.to_state.attributes.event_type }}'
-    switch_from_state: '{{ trigger.from_state.attributes.event_type }}'
-    switch_id: '{{ trigger.id }}'
-    #    switch_from_ID: '{{ trigger.entity_id }}'
-- choose:
+actions:
+  - variables:
+      switch_to_state: "{{ trigger.to_state.attributes.event_type }}"
+      switch_from_state: "{{ trigger.from_state.attributes.event_type }}"
+  - choose:
+      - conditions: "{{ switch_to_state == 'on' }}"
+        sequence: !input 'button_on'
+      - conditions: "{{ switch_to_state == 'off' }}"
+        sequence: !input 'button_off'
+      - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
+        sequence: !input 'button_on_repeat'
+      - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
+        sequence: !input 'button_off_repeat'
+      - conditions: "{{ switch_to_state == 'level_control_stop' }}"
+        sequence:
+          - choose:
+              - conditions: "{{ switch_from_state == 'move_up_with_on_off' }}"
+                sequence: null
+              - conditions: "{{ switch_from_state == 'move_down_with_on_off' }}"
+                sequence: null
