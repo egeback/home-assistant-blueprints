@@ -60,6 +60,7 @@ actions:
       - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
         sequence:
       - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
+        sequence:
         - repeat:
               until:
                 - condition: template
