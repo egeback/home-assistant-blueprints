@@ -1,9 +1,9 @@
 blueprint:
-  name: Four Button Push Controller with Combos (press/hold)
+  name: Four Button Push Controller with Combos and Hold Tracking
   description: >
     Handles 4-button push devices reporting presses/releases via event entity attributes.
-    Supports click, hold loops (for dimming or repeated actions), and multi-button combinations.
-    The hold sequence is left as !input, so the user can define what happens (e.g., brightness increase).
+    Supports click, hold loops (for dimming), and multi-button combinations.
+    Uses input_booleans with a configurable prefix to track physical holds.
   domain: automation
 
   input:
@@ -14,6 +14,13 @@ blueprint:
         entity:
           domain: event
           multiple: false
+
+    input_prefix:
+      name: Input Boolean Prefix
+      description: Prefix for input_booleans (e.g., 'matrum_switch')
+      default: ""
+      selector:
+        text: {}
 
     # Single button click actions
     button1_click:
@@ -81,6 +88,7 @@ mode: restart
 action:
   - variables:
       ae: !input action_entity
+      prefix: !input input_prefix
       new_state: "{{ trigger.to_state.attributes.event_type }}"
       old_state: "{{ trigger.from_state.attributes.event_type | default('') }}"
 
@@ -89,59 +97,101 @@ action:
       # ------------ BUTTON 1 ------------
       - conditions: "{{ old_state != 'press_1' and new_state == 'press_1' }}"
         sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_1"
           - repeat:
-              count: 20      # fixed loop for “dim while held”
+              while: "{{ is_state('input_boolean.' ~ prefix ~ '_holding_1','on') }}"
               sequence: !input button1_hold
 
       - conditions: "{{ old_state != 'release_1' and new_state == 'release_1' }}"
-        sequence: !input button1_click
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_1"
+          - !input button1_click
 
       # ------------ BUTTON 2 ------------
       - conditions: "{{ old_state != 'press_2' and new_state == 'press_2' }}"
         sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_2"
           - repeat:
-              count: 20
+              while: "{{ is_state('input_boolean.' ~ prefix ~ '_holding_2','on') }}"
               sequence: !input button2_hold
 
       - conditions: "{{ old_state != 'release_2' and new_state == 'release_2' }}"
-        sequence: !input button2_click
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_2"
+          - !input button2_click
 
       # ------------ BUTTON 3 ------------
       - conditions: "{{ old_state != 'press_3' and new_state == 'press_3' }}"
         sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_3"
           - repeat:
-              count: 20
+              while: "{{ is_state('input_boolean.' ~ prefix ~ '_holding_3','on') }}"
               sequence: !input button3_hold
 
       - conditions: "{{ old_state != 'release_3' and new_state == 'release_3' }}"
-        sequence: !input button3_click
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_3"
+          - !input button3_click
 
       # ------------ BUTTON 4 ------------
       - conditions: "{{ old_state != 'press_4' and new_state == 'press_4' }}"
         sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_4"
           - repeat:
-              count: 20
+              while: "{{ is_state('input_boolean.' ~ prefix ~ '_holding_4','on') }}"
               sequence: !input button4_hold
 
       - conditions: "{{ old_state != 'release_4' and new_state == 'release_4' }}"
-        sequence: !input button4_click
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_4"
+          - !input button4_click
 
       # ------------ BUTTON 1+3 COMBO ------------
       - conditions: "{{ old_state != 'press_1_and_3' and new_state == 'press_1_and_3' }}"
         sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_1_3"
           - repeat:
-              count: 20
+              while: "{{ is_state('input_boolean.' ~ prefix ~ '_holding_1_3','on') }}"
               sequence: !input button1_3_hold
 
       - conditions: "{{ old_state != 'release_1_and_3' and new_state == 'release_1_and_3' }}"
-        sequence: !input button1_3_click
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_1_3"
+          - !input button1_3_click
 
       # ------------ BUTTON 2+4 COMBO ------------
       - conditions: "{{ old_state != 'press_2_and_4' and new_state == 'press_2_and_4' }}"
         sequence:
+          - service: input_boolean.turn_on
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_2_4"
           - repeat:
-              count: 20
+              while: "{{ is_state('input_boolean.' ~ prefix ~ '_holding_2_4','on') }}"
               sequence: !input button2_4_hold
 
       - conditions: "{{ old_state != 'release_2_and_4' and new_state == 'release_2_and_4' }}"
-        sequence: !input button2_4_click
+        sequence:
+          - service: input_boolean.turn_off
+            target:
+              entity_id: "input_boolean.{{ prefix }}_holding_2_4"
+          - !input button2_4_click
