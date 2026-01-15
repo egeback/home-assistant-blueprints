@@ -11,7 +11,7 @@ blueprint:
       selector:
         entity:
           filter:
-            domain: sensor
+            domain: action
           multiple: false
 
     # Click actions
