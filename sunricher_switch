@@ -1,15 +1,14 @@
 blueprint:
-  name: Four Button Push Controller (press/hold) - Event Attribute
+  name: Four Button Push Controller (press/hold) - Event Trigger
   description: >
-    Handle 4-button press devices exposing press_#/release_# 
-    in `attributes.event_type` of a single event entity.
-    Supports click and hold loops (for dimming or other repeated actions).
+    Handles 4-button push devices reporting presses/releases via events.
+    Supports click and hold loops (for dimming or repeated actions).
   domain: automation
 
   input:
-    action_entity:
-      name: Action Entity
-      description: Entity reporting press_#/release_# in attributes.event_type
+    action_event:
+      name: Event
+      description: Event entity reporting button presses in `event_type`
       selector:
         entity:
           domain: event
@@ -54,13 +53,13 @@ blueprint:
 mode: restart
 
 trigger:
-  - platform: state
-    entity_id: !input action_entity
+  - platform: event
+    event_type: !input action_event
 
 variables:
-  ae: !input action_entity
-  old_state: "{{ trigger.from_state.attributes.event_type | default('') }}"
-  new_state: "{{ trigger.to_state.attributes.event_type | default('') }}"
+  ae: !input action_event
+  new_state: "{{ trigger.event.data.event_type }}"
+  old_state: "{{ trigger.event.data.old_event_type | default('') }}"
 
 action:
   choose:
@@ -69,7 +68,7 @@ action:
     - conditions: "{{ old_state != 'press_1' and new_state == 'press_1' }}"
       sequence:
         - repeat:
-            while: "{{ state_attr(ae, 'event_type') == 'press_1' }}"
+            while: "{{ trigger.event.data.event_type == 'press_1' }}"
             sequence: !input button1_hold
 
     - conditions: "{{ old_state != 'release_1' and new_state == 'release_1' }}"
@@ -79,7 +78,7 @@ action:
     - conditions: "{{ old_state != 'press_2' and new_state == 'press_2' }}"
       sequence:
         - repeat:
-            while: "{{ state_attr(ae, 'event_type') == 'press_2' }}"
+            while: "{{ trigger.event.data.event_type == 'press_2' }}"
             sequence: !input button2_hold
 
     - conditions: "{{ old_state != 'release_2' and new_state == 'release_2' }}"
@@ -89,7 +88,7 @@ action:
     - conditions: "{{ old_state != 'press_3' and new_state == 'press_3' }}"
       sequence:
         - repeat:
-            while: "{{ state_attr(ae, 'event_type') == 'press_3' }}"
+            while: "{{ trigger.event.data.event_type == 'press_3' }}"
             sequence: !input button3_hold
 
     - conditions: "{{ old_state != 'release_3' and new_state == 'release_3' }}"
@@ -99,7 +98,7 @@ action:
     - conditions: "{{ old_state != 'press_4' and new_state == 'press_4' }}"
       sequence:
         - repeat:
-            while: "{{ state_attr(ae, 'event_type') == 'press_4' }}"
+            while: "{{ trigger.event.data.event_type == 'press_4' }}"
             sequence: !input button4_hold
 
     - conditions: "{{ old_state != 'release_4' and new_state == 'release_4' }}"
