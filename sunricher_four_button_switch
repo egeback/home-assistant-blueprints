@@ -1,18 +1,17 @@
 blueprint:
-  name: Four-Button Push Controller (press/hold)
+  name: Four Button Push Controller (press/hold)
   description: >
-    Trigger actions from a 4-button push device that exposes press_#/release_#
-    states on a single 'action' entity. Click = short press, Hold = while pressed.
+    Handle 4-button press devices exposing press_#/release_#
+    on a single action entity. Supports click and hold.
   domain: automation
+
   input:
     action_entity:
       name: Action Entity
-      description: The entity that exposes press_#/release_# states
+      description: Entity reporting press_#/release_#
       selector:
         entity:
-          filter:
-            domain: event
-          multiple: true
+          multiple: false
 
     # Click actions
     button1_click:
@@ -32,7 +31,7 @@ blueprint:
       default: []
       selector: {action: {}}
 
-    # Hold actions (looping until release)
+    # Hold actions
     button1_hold:
       name: Button 1 Hold Loop
       default: []
@@ -51,49 +50,50 @@ blueprint:
       selector: {action: {}}
 
 mode: restart
-max_exceeded: silent
 
 trigger:
   - platform: state
     entity_id: !input action_entity
 
 variables:
-  new_state: "{{ trigger.to_state.state }}"
+  ae: !input action_entity
+  new: "{{ trigger.to_state.state }}"
 
 action:
   choose:
-    # Button 1
-    - conditions: "{{ new_state == 'press_1' }}"
+
+    # ---------------- BUTTON 1 ----------------
+    - conditions: "{{ new == 'press_1' }}"
       sequence:
         - repeat:
-            while: "{{ states(action_entity) == 'press_1' }}"
+            while: "{{ states(ae) == 'press_1' }}"
             sequence: !input button1_hold
-    - conditions: "{{ new_state == 'release_1' }}"
+    - conditions: "{{ new == 'release_1' }}"
       sequence: !input button1_click
 
-    # Button 2
-    - conditions: "{{ new_state == 'press_2' }}"
+    # ---------------- BUTTON 2 ----------------
+    - conditions: "{{ new == 'press_2' }}"
       sequence:
         - repeat:
-            while: "{{ states(action_entity) == 'press_2' }}"
+            while: "{{ states(ae) == 'press_2' }}"
             sequence: !input button2_hold
-    - conditions: "{{ new_state == 'release_2' }}"
+    - conditions: "{{ new == 'release_2' }}"
       sequence: !input button2_click
 
-    # Button 3
-    - conditions: "{{ new_state == 'press_3' }}"
+    # ---------------- BUTTON 3 ----------------
+    - conditions: "{{ new == 'press_3' }}"
       sequence:
         - repeat:
-            while: "{{ states(action_entity) == 'press_3' }}"
+            while: "{{ states(ae) == 'press_3' }}"
             sequence: !input button3_hold
-    - conditions: "{{ new_state == 'release_3' }}"
+    - conditions: "{{ new == 'release_3' }}"
       sequence: !input button3_click
 
-    # Button 4
-    - conditions: "{{ new_state == 'press_4' }}"
+    # ---------------- BUTTON 4 ----------------
+    - conditions: "{{ new == 'press_4' }}"
       sequence:
         - repeat:
-            while: "{{ states(action_entity) == 'press_4' }}"
+            while: "{{ states(ae) == 'press_4' }}"
             sequence: !input button4_hold
-    - conditions: "{{ new_state == 'release_4' }}"
+    - conditions: "{{ new == 'release_4' }}"
       sequence: !input button4_click
