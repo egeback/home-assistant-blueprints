@@ -10,6 +10,8 @@ blueprint:
       description: The entity that exposes press_#/release_# states
       selector:
         entity:
+          filter:
+            domain: event
           multiple: true
 
     # Click actions
