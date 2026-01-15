@@ -1,70 +1,106 @@
 blueprint:
-  name: Sunricher SR-ZGP2801K2-DIM Switch Automation
+  name: Four Button Push Controller (press/hold) - Event Attribute
   description: >
-    Support for Sunricher SR-ZGP2801K2-DIM Zigbee dimmer switch buttons.
-    Configure actions for each button press type (on, off, move_up_with_on_off, move_down_with_on_off, level_control_stop)
+    Handle 4-button press devices exposing press_#/release_# 
+    in `attributes.event_type` of a single event entity.
+    Supports click and hold loops (for dimming or other repeated actions).
   domain: automation
+
   input:
-    sunricher-switch-button1:
-      name: "Sunricher Switch button"
-      description: "Switch button"
+    action_entity:
+      name: Action Entity
+      description: Entity reporting press_#/release_# in attributes.event_type
       selector:
         entity:
-          # domain_class: button
-          # event: {}
-          multiple: true
+          domain: event
+          multiple: false
 
-    button_on:
-      name: Short Release 1
-      description: Action to run on button upper-left short release
+    # Click actions
+    button1_click:
+      name: Button 1 Click
       default: []
-      selector:
-        action: {}
-    button_off:
-      name: Short Release 2
-      description: Action to run on button lower-left short release
+      selector: {action: {}}
+    button2_click:
+      name: Button 2 Click
       default: []
-      selector:
-        action: {}
-        
-    button_on_repeat:
-      name: Long Release 1
-      description: Action to run on button upper-left long release
+      selector: {action: {}}
+    button3_click:
+      name: Button 3 Click
       default: []
-      selector:
-        action: {}
-    button_off_repeat:
-      name: Long Release 2
-      description: Action to run on button lower-left long release
+      selector: {action: {}}
+    button4_click:
+      name: Button 4 Click
       default: []
-      selector:
-        action: {}
+      selector: {action: {}}
 
-mode: queued
-max: 10
+    # Hold actions
+    button1_hold:
+      name: Button 1 Hold Loop
+      default: []
+      selector: {action: {}}
+    button2_hold:
+      name: Button 2 Hold Loop
+      default: []
+      selector: {action: {}}
+    button3_hold:
+      name: Button 3 Hold Loop
+      default: []
+      selector: {action: {}}
+    button4_hold:
+      name: Button 4 Hold Loop
+      default: []
+      selector: {action: {}}
+
+mode: restart
 
 trigger:
-- platform: state
-  entity_id: !input 'sunricher-switch-button1'
-  id: button
+  - platform: state
+    entity_id: !input action_entity
 
-actions:
-  - variables:
-      switch_to_state: "{{ trigger.to_state.attributes.event_type }}"
-      switch_from_state: "{{ trigger.from_state.attributes.event_type }}"
-  - choose:
-      - conditions: "{{ switch_to_state == 'on' }}"
-        sequence: !input 'button_on'
-      - conditions: "{{ switch_to_state == 'off' }}"
-        sequence: !input 'button_off'
-      - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
-        sequence: !input 'button_on_repeat'
-      - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
-        sequence: !input 'button_off_repeat'
-      - conditions: "{{ switch_to_state == 'level_control_stop' }}"
-        sequence:
-          - choose:
-              - conditions: "{{ switch_from_state == 'move_up_with_on_off' }}"
-                sequence: null
-              - conditions: "{{ switch_from_state == 'move_down_with_on_off' }}"
-                sequence: null
+variables:
+  ae: !input action_entity
+  old_state: "{{ trigger.from_state.attributes.event_type | default('') }}"
+  new_state: "{{ trigger.to_state.attributes.event_type | default('') }}"
+
+action:
+  choose:
+
+    # ------------ BUTTON 1 ------------
+    - conditions: "{{ old_state != 'press_1' and new_state == 'press_1' }}"
+      sequence:
+        - repeat:
+            while: "{{ state_attr(ae, 'event_type') == 'press_1' }}"
+            sequence: !input button1_hold
+
+    - conditions: "{{ old_state != 'release_1' and new_state == 'release_1' }}"
+      sequence: !input button1_click
+
+    # ------------ BUTTON 2 ------------
+    - conditions: "{{ old_state != 'press_2' and new_state == 'press_2' }}"
+      sequence:
+        - repeat:
+            while: "{{ state_attr(ae, 'event_type') == 'press_2' }}"
+            sequence: !input button2_hold
+
+    - conditions: "{{ old_state != 'release_2' and new_state == 'release_2' }}"
+      sequence: !input button2_click
+
+    # ------------ BUTTON 3 ------------
+    - conditions: "{{ old_state != 'press_3' and new_state == 'press_3' }}"
+      sequence:
+        - repeat:
+            while: "{{ state_attr(ae, 'event_type') == 'press_3' }}"
+            sequence: !input button3_hold
+
+    - conditions: "{{ old_state != 'release_3' and new_state == 'release_3' }}"
+      sequence: !input button3_click
+
+    # ------------ BUTTON 4 ------------
+    - conditions: "{{ old_state != 'press_4' and new_state == 'press_4' }}"
+      sequence:
+        - repeat:
+            while: "{{ state_attr(ae, 'event_type') == 'press_4' }}"
+            sequence: !input button4_hold
+
+    - conditions: "{{ old_state != 'release_4' and new_state == 'release_4' }}"
+      sequence: !input button4_click
