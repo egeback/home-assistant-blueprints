@@ -1,0 +1,131 @@
+blueprint:
+  name: "Generic 4-Button Action Controller (Tap & Hold)"
+  description: "B1-B4 support individual tap actions and repeated hold actions."
+  domain: automation
+  input:
+    remote_event_entity:
+      name: Remote Event Entity
+      description: Select the event entity (e.g., event.matrum_switch_action).
+      selector:
+        entity:
+          filter:
+            - domain: event
+    # Button 1
+    button_1_press:
+      name: Button 1 Tap Action
+      default: []
+      selector:
+        action: {}
+    button_1_hold:
+      name: Button 1 Hold Action (Repeat)
+      default: []
+      selector:
+        action: {}
+    # Button 2
+    button_2_press:
+      name: Button 2 Tap Action
+      default: []
+      selector:
+        action: {}
+    button_2_hold:
+      name: Button 2 Hold Action (Repeat)
+      default: []
+      selector:
+        action: {}
+    # Button 3
+    button_3_press:
+      name: Button 3 Tap Action
+      default: []
+      selector:
+        action: {}
+    button_3_hold:
+      name: Button 3 Hold Action (Repeat)
+      default: []
+      selector:
+        action: {}
+    # Button 4
+    button_4_press:
+      name: Button 4 Tap Action
+      default: []
+      selector:
+        action: {}
+    button_4_hold:
+      name: Button 4 Hold Action (Repeat)
+      default: []
+      selector:
+        action: {}
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input remote_event_entity
+
+action:
+  - variables:
+      action_val: "{{ trigger.to_state.attributes.event_type }}"
+      # Measures how long the button was held before the 'release' event
+      duration: "{{ as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed | default(now())) }}"
+
+  - choose:
+      # --- BUTTON 1 HOLD ---
+      - conditions: "{{ action_val == 'press_1' }}"
+        sequence:
+          - delay: { milliseconds: 300 }
+          - repeat:
+              while: [{ condition: template, value_template: "true" }]
+              sequence:
+                - choose: []
+                  default: !input button_1_hold
+                - delay: { milliseconds: 300 }
+
+      # --- BUTTON 2 HOLD ---
+      - conditions: "{{ action_val == 'press_2' }}"
+        sequence:
+          - delay: { milliseconds: 300 }
+          - repeat:
+              while: [{ condition: template, value_template: "true" }]
+              sequence:
+                - choose: []
+                  default: !input button_2_hold
+                - delay: { milliseconds: 300 }
+
+      # --- BUTTON 3 HOLD ---
+      - conditions: "{{ action_val == 'press_3' }}"
+        sequence:
+          - delay: { milliseconds: 300 }
+          - repeat:
+              while: [{ condition: template, value_template: "true" }]
+              sequence:
+                - choose: []
+                  default: !input button_3_hold
+                - delay: { milliseconds: 300 }
+
+      # --- BUTTON 4 HOLD ---
+      - conditions: "{{ action_val == 'press_4' }}"
+        sequence:
+          - delay: { milliseconds: 300 }
+          - repeat:
+              while: [{ condition: template, value_template: "true" }]
+              sequence:
+                - choose: []
+                  default: !input button_4_hold
+                - delay: { milliseconds: 300 }
+
+      # --- RELEASE LOGIC (TAPS) ---
+      - conditions:
+          - condition: template
+            value_template: "{{ action_val in ['release_1', 'release_2', 'release_3', 'release_4'] }}"
+        sequence:
+          - choose:
+              # If released quickly (under 350ms), execute the Tap action
+              - conditions: "{{ action_val == 'release_1' and duration < 0.35 }}"
+                sequence: !input button_1_press
+              - conditions: "{{ action_val == 'release_2' and duration < 0.35 }}"
+                sequence: !input button_2_press
+              - conditions: "{{ action_val == 'release_3' and duration < 0.35 }}"
+                sequence: !input button_3_press
+              - conditions: "{{ action_val == 'release_4' and duration < 0.35 }}"
+                sequence: !input button_4_press
+          - stop: "Execution complete"
