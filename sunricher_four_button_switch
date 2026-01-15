@@ -2,7 +2,8 @@ blueprint:
   name: Four Button Push Controller with Combos (press/hold)
   description: >
     Handles 4-button push devices reporting presses/releases via event entity attributes.
-    Supports click, hold loops (for dimming), and multi-button combinations.
+    Supports click, hold loops (for dimming or repeated actions), and multi-button combinations.
+    The hold sequence is left as !input, so the user can define what happens (e.g., brightness increase).
   domain: automation
 
   input:
@@ -89,7 +90,7 @@ action:
       - conditions: "{{ old_state != 'press_1' and new_state == 'press_1' }}"
         sequence:
           - repeat:
-              while: "{{ state_attr(ae, 'event_type') == 'press_1' }}"
+              count: 20      # fixed loop for “dim while held”
               sequence: !input button1_hold
 
       - conditions: "{{ old_state != 'release_1' and new_state == 'release_1' }}"
@@ -99,7 +100,7 @@ action:
       - conditions: "{{ old_state != 'press_2' and new_state == 'press_2' }}"
         sequence:
           - repeat:
-              while: "{{ state_attr(ae, 'event_type') == 'press_2' }}"
+              count: 20
               sequence: !input button2_hold
 
       - conditions: "{{ old_state != 'release_2' and new_state == 'release_2' }}"
@@ -109,7 +110,7 @@ action:
       - conditions: "{{ old_state != 'press_3' and new_state == 'press_3' }}"
         sequence:
           - repeat:
-              while: "{{ state_attr(ae, 'event_type') == 'press_3' }}"
+              count: 20
               sequence: !input button3_hold
 
       - conditions: "{{ old_state != 'release_3' and new_state == 'release_3' }}"
@@ -119,7 +120,7 @@ action:
       - conditions: "{{ old_state != 'press_4' and new_state == 'press_4' }}"
         sequence:
           - repeat:
-              while: "{{ state_attr(ae, 'event_type') == 'press_4' }}"
+              count: 20
               sequence: !input button4_hold
 
       - conditions: "{{ old_state != 'release_4' and new_state == 'release_4' }}"
@@ -129,7 +130,7 @@ action:
       - conditions: "{{ old_state != 'press_1_and_3' and new_state == 'press_1_and_3' }}"
         sequence:
           - repeat:
-              while: "{{ state_attr(ae, 'event_type') == 'press_1_and_3' }}"
+              count: 20
               sequence: !input button1_3_hold
 
       - conditions: "{{ old_state != 'release_1_and_3' and new_state == 'release_1_and_3' }}"
@@ -139,7 +140,7 @@ action:
       - conditions: "{{ old_state != 'press_2_and_4' and new_state == 'press_2_and_4' }}"
         sequence:
           - repeat:
-              while: "{{ state_attr(ae, 'event_type') == 'press_2_and_4' }}"
+              count: 20
               sequence: !input button2_4_hold
 
       - conditions: "{{ old_state != 'release_2_and_4' and new_state == 'release_2_and_4' }}"
