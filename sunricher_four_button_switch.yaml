@@ -2,6 +2,7 @@ blueprint:
   name: "Dual Light 4-Button Dimmer (Tap Off / Hold Dim)"
   description: "B1/B2 control Light A, B3/B4 control Light B. Even buttons: Tap for OFF, Hold to DIM."
   domain: automation
+  source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_four_button_switch.yaml
   input:
     remote_event_entity:
       name: Remote Event Entity

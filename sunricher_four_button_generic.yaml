@@ -2,6 +2,7 @@ blueprint:
   name: "Generic 4-Button Action Controller (Tap & Hold)"
   description: "B1-B4 support individual tap actions and repeated hold actions."
   domain: automation
+  source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_four_button_generic.yaml
   input:
     remote_event_entity:
       name: Remote Event Entity

@@ -4,6 +4,7 @@ blueprint:
     Support for Sunricher SR-ZGP2801K2-DIM Zigbee dimmer switch buttons.
     Configure actions for each button press type (on, off, move_up_with_on_off, move_down_with_on_off, level_control_stop)
   domain: automation
+  source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_switch.yaml
   input:
     sunricher-switch-button1:
       name: "Sunricher Switch button"
