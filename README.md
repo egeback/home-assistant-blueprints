@@ -1,6 +1,6 @@
 # Home Assistant blueprints
 
-Automation blueprints for Zigbee wall switches and remotes (event entities in ZHA).
+Automation blueprints for Zigbee wall switches and remotes (Green Power, event entities in Zigbee2MQTT).
 
 | Blueprint | For | Import |
 |---|---|---|
@@ -11,8 +11,8 @@ Automation blueprints for Zigbee wall switches and remotes (event entities in ZH
 ## How they work
 
 - The 4-button blueprints expect an `event` entity whose `event_type` is `press_N` / `release_N`
-  (N = 1–4, plus `press_1_and_3` / `release_2_and_4` for two buttons), as Sunricher Green Power
-  switches report in ZHA.
+  (N = 1–4, plus `press_1_and_3` / `release_2_and_4` for two buttons), as EnOcean PTM 216Z Green Power
+  switches report in Zigbee2MQTT.
 - **Tap or hold** is decided by the time between the press and release events (the entity's
   state is the event time). Released before the hold delay (350 ms generic, 400 ms dual light)
   it is a tap; held longer, the hold action repeats.

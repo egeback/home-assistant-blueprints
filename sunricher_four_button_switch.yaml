@@ -4,7 +4,7 @@ blueprint:
     Buttons 1/2 control light A, buttons 3/4 light B.
     Odd buttons: tap for on, hold to brighten. Even buttons: tap for off, hold to dim.
     For 4-button remotes whose event entity reports press_N / release_N (N = 1–4),
-    such as Sunricher Green Power switches in ZHA.
+    such as EnOcean PTM 216Z Green Power switches in Zigbee2MQTT.
   domain: automation
   source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_four_button_switch.yaml
   homeassistant:

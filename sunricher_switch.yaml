@@ -1,7 +1,7 @@
 blueprint:
   name: Sunricher SR-ZGP2801K2-DIM Switch Automation
   description: >
-    Support for the Sunricher SR-ZGP2801K2-DIM Zigbee dimmer switch (event entity in ZHA).
+    Support for the Sunricher SR-ZGP2801K2-DIM Green Power dimmer switch (event entity in Zigbee2MQTT).
     Short press: the on/off command of the upper/lower button.
     Long press: move_up_with_on_off / move_down_with_on_off when the hold starts;
     optionally repeated until the button is released (level_control_stop).

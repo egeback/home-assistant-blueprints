@@ -3,7 +3,7 @@ blueprint:
   description: >
     Any action per button on tap, and a repeated action while the button is held.
     For 4-button remotes whose event entity reports press_N / release_N (N = 1–4),
-    such as Sunricher Green Power switches in ZHA.
+    such as EnOcean PTM 216Z Green Power switches in Zigbee2MQTT.
     A press released before the hold delay is a tap; held longer, the hold action
     repeats until release (at most the set number of times, in case the release is lost).
   domain: automation
