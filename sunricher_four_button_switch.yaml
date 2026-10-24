@@ -1,8 +1,14 @@
 blueprint:
   name: "Dual Light 4-Button Dimmer (Tap Off / Hold Dim)"
-  description: "B1/B2 control Light A, B3/B4 control Light B. Even buttons: Tap for OFF, Hold to DIM."
+  description: >
+    Buttons 1/2 control light A, buttons 3/4 light B.
+    Odd buttons: tap for on, hold to brighten. Even buttons: tap for off, hold to dim.
+    For 4-button remotes whose event entity reports press_N / release_N (N = 1–4),
+    such as Sunricher Green Power switches in ZHA.
   domain: automation
   source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_four_button_switch.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
     remote_event_entity:
       name: Remote Event Entity
@@ -23,84 +29,138 @@ blueprint:
         target:
           entity:
             domain: light
+    tuning:
+      name: Dimming and timing
+      icon: mdi:tune
+      collapsed: true
+      input:
+        brightness_step:
+          name: Brightness step
+          description: Brightness change per repeat while a button is held.
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 50
+              unit_of_measurement: "%"
+        hold_delay:
+          name: Hold delay
+          description: A press held longer than this dims; released sooner, it is a tap.
+          default: 400
+          selector:
+            number:
+              min: 100
+              max: 2000
+              step: 50
+              unit_of_measurement: ms
+        repeat_interval:
+          name: Repeat interval
+          default: 300
+          selector:
+            number:
+              min: 100
+              max: 2000
+              step: 50
+              unit_of_measurement: ms
+        max_repeats:
+          name: Maximum repeats
+          description: Stop dimming after this many steps, even if no release arrives.
+          default: 20
+          selector:
+            number:
+              min: 1
+              max: 200
+              mode: box
 
 mode: restart
 max_exceeded: silent
 
-trigger:
-  - platform: state
+variables:
+  brightness_step: !input brightness_step
+  hold_delay: !input hold_delay
+  repeat_interval: !input repeat_interval
+  max_repeats: !input max_repeats
+  event_type: "{{ trigger.to_state.attributes.event_type }}"
+  # The entity's state is the time of the event. A press followed by a release gives how long it was held.
+  event_ts: "{{ as_timestamp(trigger.to_state.state, 0) }}"
+  previous_ts: "{{ as_timestamp(trigger.from_state.state, 0) if trigger.from_state else 0 }}"
+  is_tap: "{{ previous_ts > 0 and (event_ts - previous_ts) * 1000 < hold_delay }}"
+
+triggers:
+  - trigger: state
     entity_id: !input remote_event_entity
+    not_to:
+      - unavailable
+      - unknown
 
-action:
-  - variables:
-      action_val: "{{ trigger.to_state.attributes.event_type }}"
-      # Duration calculation to distinguish Tap from Hold
-      duration: "{{ as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed | default(now())) }}"
+conditions:
+  # A real event is stamped now. An old event replayed when the entity comes back is ignored.
+  - "{{ event_ts > as_timestamp(now()) - 5 }}"
 
+actions:
   - choose:
-      # BUTTON 1: ON / BRIGHTEN LIGHT A
-      - conditions: "{{ action_val == 'press_1' }}"
+      # Button 1: on at once, brighten light A while held
+      - conditions: "{{ event_type == 'press_1' }}"
         sequence:
           - action: light.turn_on
             target: !input light_a
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [ { condition: template, value_template: "true" } ]
+              count: "{{ max_repeats }}"
               sequence:
                 - action: light.turn_on
-                  data: { brightness_step_pct: 10 }
                   target: !input light_a
-                - delay: { milliseconds: 300 }
+                  data:
+                    brightness_step_pct: "{{ brightness_step }}"
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # BUTTON 2: DIM LIGHT A (Hold logic)
-      - conditions: "{{ action_val == 'press_2' }}"
+      # Button 2: dim light A while held (a tap turns it off on release)
+      - conditions: "{{ event_type == 'press_2' }}"
         sequence:
-          - delay: { milliseconds: 300 } # Wait to see if it's a hold
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [ { condition: template, value_template: "true" } ]
+              count: "{{ max_repeats }}"
               sequence:
                 - action: light.turn_on
-                  data: { brightness_step_pct: -10 }
                   target: !input light_a
-                - delay: { milliseconds: 300 }
+                  data:
+                    brightness_step_pct: "{{ -brightness_step }}"
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # BUTTON 3: ON / BRIGHTEN LIGHT B
-      - conditions: "{{ action_val == 'press_3' }}"
+      # Button 3: on at once, brighten light B while held
+      - conditions: "{{ event_type == 'press_3' }}"
         sequence:
           - action: light.turn_on
             target: !input light_b
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [ { condition: template, value_template: "true" } ]
+              count: "{{ max_repeats }}"
               sequence:
                 - action: light.turn_on
-                  data: { brightness_step_pct: 10 }
                   target: !input light_b
-                - delay: { milliseconds: 300 }
+                  data:
+                    brightness_step_pct: "{{ brightness_step }}"
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # BUTTON 4: DIM LIGHT B (Hold logic)
-      - conditions: "{{ action_val == 'press_4' }}"
+      # Button 4: dim light B while held (a tap turns it off on release)
+      - conditions: "{{ event_type == 'press_4' }}"
         sequence:
-          - delay: { milliseconds: 300 }
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [ { condition: template, value_template: "true" } ]
+              count: "{{ max_repeats }}"
               sequence:
                 - action: light.turn_on
-                  data: { brightness_step_pct: -10 }
                   target: !input light_b
-                - delay: { milliseconds: 300 }
+                  data:
+                    brightness_step_pct: "{{ -brightness_step }}"
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # RELEASE LOGIC: Handle Taps for Off
-      - conditions:
-          - condition: template
-            value_template: "{{ action_val in ['release_1', 'release_2', 'release_3', 'release_4'] }}"
+      # Release: the restart above already stopped any dimming; a short press on 2 or 4 turns off.
+      - conditions: "{{ event_type == 'release_2' and is_tap }}"
         sequence:
-          - choose:
-              # If button 2 or 4 was released quickly (under 400ms), turn off
-              - conditions: "{{ action_val == 'release_2' and duration < 0.4 }}"
-                sequence:
-                  - action: light.turn_off
-                    target: !input light_a
-              - conditions: "{{ action_val == 'release_4' and duration < 0.4 }}"
-                sequence:
-                  - action: light.turn_off
-                    target: !input light_b
-          - stop: "Button released"
+          - action: light.turn_off
+            target: !input light_a
+      - conditions: "{{ event_type == 'release_4' and is_tap }}"
+        sequence:
+          - action: light.turn_off
+            target: !input light_b

@@ -1,71 +1,123 @@
 blueprint:
   name: Sunricher SR-ZGP2801K2-DIM Switch Automation
   description: >
-    Support for Sunricher SR-ZGP2801K2-DIM Zigbee dimmer switch buttons.
-    Configure actions for each button press type (on, off, move_up_with_on_off, move_down_with_on_off, level_control_stop)
+    Support for the Sunricher SR-ZGP2801K2-DIM Zigbee dimmer switch (event entity in ZHA).
+    Short press: the on/off command of the upper/lower button.
+    Long press: move_up_with_on_off / move_down_with_on_off when the hold starts;
+    optionally repeated until the button is released (level_control_stop).
   domain: automation
   source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_switch.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
     sunricher-switch-button1:
       name: "Sunricher Switch button"
-      description: "Switch button"
+      description: "The switch's event entity (e.g., event.kok_switch_action)."
       selector:
         entity:
-          # domain_class: button
-          # event: {}
           multiple: true
+          filter:
+            - domain: event
 
     button_on:
-      name: Short Release 1
-      description: Action to run on button upper-left short release
+      name: Upper button – short press
+      description: Runs on the "on" command.
       default: []
       selector:
         action: {}
     button_off:
-      name: Short Release 2
-      description: Action to run on button lower-left short release
+      name: Lower button – short press
+      description: Runs on the "off" command.
       default: []
       selector:
         action: {}
-        
+
     button_on_repeat:
-      name: Long Release 1
-      description: Action to run on button upper-left long release
+      name: Upper button – long press
+      description: Runs when a hold starts (move_up_with_on_off).
       default: []
       selector:
         action: {}
     button_off_repeat:
-      name: Long Release 2
-      description: Action to run on button lower-left long release
+      name: Lower button – long press
+      description: Runs when a hold starts (move_down_with_on_off).
       default: []
       selector:
         action: {}
 
-mode: queued
-max: 10
+    hold:
+      name: Hold behaviour
+      icon: mdi:gesture-tap-hold
+      collapsed: true
+      input:
+        repeat_while_held:
+          name: Repeat while held
+          description: >
+            Repeat the long-press action until the button is released, e.g. to keep dimming.
+            Off: it runs once when the hold starts.
+          default: false
+          selector:
+            boolean: {}
+        repeat_interval:
+          name: Repeat interval
+          default: 400
+          selector:
+            number:
+              min: 100
+              max: 2000
+              step: 50
+              unit_of_measurement: ms
+        max_repeats:
+          name: Maximum repeats
+          description: Stop repeating after this many times, even if no release arrives.
+          default: 20
+          selector:
+            number:
+              min: 1
+              max: 200
+              mode: box
 
-trigger:
-- platform: state
-  entity_id: !input 'sunricher-switch-button1'
-  id: button
+mode: restart
+max_exceeded: silent
 
+variables:
+  repeat_while_held: !input repeat_while_held
+  repeat_interval: !input repeat_interval
+  max_repeats: !input max_repeats
+  event_type: "{{ trigger.to_state.attributes.event_type }}"
+  event_ts: "{{ as_timestamp(trigger.to_state.state, 0) }}"
+
+triggers:
+  - trigger: state
+    entity_id: !input sunricher-switch-button1
+    not_to:
+      - unavailable
+      - unknown
+
+conditions:
+  # A real event is stamped now. An old event replayed when the entity comes back is ignored.
+  - "{{ event_ts > as_timestamp(now()) - 5 }}"
+
+# level_control_stop (release after a hold) needs no branch: as a new run it stops a repeating hold.
 actions:
-  - variables:
-      switch_to_state: "{{ trigger.to_state.attributes.event_type }}"
-      switch_from_state: "{{ trigger.from_state.attributes.event_type }}"
   - choose:
-      - conditions: "{{ switch_to_state == 'on' }}"
-        sequence: !input 'button_on'
-      - conditions: "{{ switch_to_state == 'off' }}"
-        sequence: !input 'button_off'
-      - conditions: "{{ switch_to_state == 'move_up_with_on_off' }}"
-        sequence: !input 'button_on_repeat'
-      - conditions: "{{ switch_to_state == 'move_down_with_on_off' }}"
-        sequence: !input 'button_off_repeat'
-      - conditions: "{{ switch_to_state == 'level_control_stop' }}"
+      - conditions: "{{ event_type == 'on' }}"
+        sequence: !input button_on
+      - conditions: "{{ event_type == 'off' }}"
+        sequence: !input button_off
+      - conditions: "{{ event_type == 'move_up_with_on_off' }}"
         sequence:
-          - choose:
-              - conditions: "{{ switch_from_state == 'move_up_with_on_off' }}"
-                sequence: null
-              - conditions: "{{ switch_from_state == 'move_down_with_on_off' }}"
-                sequence: null
+          - repeat:
+              count: "{{ max_repeats if repeat_while_held else 1 }}"
+              sequence:
+                - choose: []
+                  default: !input button_on_repeat
+                - delay: { milliseconds: "{{ repeat_interval if repeat_while_held else 0 }}" }
+      - conditions: "{{ event_type == 'move_down_with_on_off' }}"
+        sequence:
+          - repeat:
+              count: "{{ max_repeats if repeat_while_held else 1 }}"
+              sequence:
+                - choose: []
+                  default: !input button_off_repeat
+                - delay: { milliseconds: "{{ repeat_interval if repeat_while_held else 0 }}" }

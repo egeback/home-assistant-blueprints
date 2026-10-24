@@ -1,8 +1,15 @@
 blueprint:
   name: "Generic 4-Button Action Controller (Tap & Hold)"
-  description: "B1-B4 support individual tap actions and repeated hold actions."
+  description: >
+    Any action per button on tap, and a repeated action while the button is held.
+    For 4-button remotes whose event entity reports press_N / release_N (N = 1–4),
+    such as Sunricher Green Power switches in ZHA.
+    A press released before the hold delay is a tap; held longer, the hold action
+    repeats until release (at most the set number of times, in case the release is lost).
   domain: automation
   source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/sunricher_four_button_generic.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
     remote_event_entity:
       name: Remote Event Entity
@@ -11,122 +18,188 @@ blueprint:
         entity:
           filter:
             - domain: event
-    # Button 1
-    button_1_press:
-      name: Button 1 Tap Action
-      default: []
-      selector:
-        action: {}
-    button_1_hold:
-      name: Button 1 Hold Action (Repeat)
-      default: []
-      selector:
-        action: {}
-    # Button 2
-    button_2_press:
-      name: Button 2 Tap Action
-      default: []
-      selector:
-        action: {}
-    button_2_hold:
-      name: Button 2 Hold Action (Repeat)
-      default: []
-      selector:
-        action: {}
-    # Button 3
-    button_3_press:
-      name: Button 3 Tap Action
-      default: []
-      selector:
-        action: {}
-    button_3_hold:
-      name: Button 3 Hold Action (Repeat)
-      default: []
-      selector:
-        action: {}
-    # Button 4
-    button_4_press:
-      name: Button 4 Tap Action
-      default: []
-      selector:
-        action: {}
-    button_4_hold:
-      name: Button 4 Hold Action (Repeat)
-      default: []
-      selector:
-        action: {}
+    button_1:
+      name: Button 1
+      icon: mdi:numeric-1-box-outline
+      input:
+        button_1_press:
+          name: Button 1 Tap Action
+          default: []
+          selector:
+            action: {}
+        button_1_hold:
+          name: Button 1 Hold Action (Repeat)
+          default: []
+          selector:
+            action: {}
+    button_2:
+      name: Button 2
+      icon: mdi:numeric-2-box-outline
+      input:
+        button_2_press:
+          name: Button 2 Tap Action
+          default: []
+          selector:
+            action: {}
+        button_2_hold:
+          name: Button 2 Hold Action (Repeat)
+          default: []
+          selector:
+            action: {}
+    button_3:
+      name: Button 3
+      icon: mdi:numeric-3-box-outline
+      input:
+        button_3_press:
+          name: Button 3 Tap Action
+          default: []
+          selector:
+            action: {}
+        button_3_hold:
+          name: Button 3 Hold Action (Repeat)
+          default: []
+          selector:
+            action: {}
+    button_4:
+      name: Button 4
+      icon: mdi:numeric-4-box-outline
+      input:
+        button_4_press:
+          name: Button 4 Tap Action
+          default: []
+          selector:
+            action: {}
+        button_4_hold:
+          name: Button 4 Hold Action (Repeat)
+          default: []
+          selector:
+            action: {}
+    combinations:
+      name: Two buttons at once
+      icon: mdi:gesture-two-tap
+      collapsed: true
+      input:
+        button_1_and_3_press:
+          name: Buttons 1 + 3 Tap Action
+          default: []
+          selector:
+            action: {}
+        button_2_and_4_press:
+          name: Buttons 2 + 4 Tap Action
+          default: []
+          selector:
+            action: {}
+    timing:
+      name: Timing
+      icon: mdi:timer-outline
+      collapsed: true
+      input:
+        hold_delay:
+          name: Hold delay
+          description: A press held longer than this is a hold; released sooner, it is a tap.
+          default: 350
+          selector:
+            number:
+              min: 100
+              max: 2000
+              step: 50
+              unit_of_measurement: ms
+        repeat_interval:
+          name: Repeat interval
+          description: Time between repeats of the hold action.
+          default: 300
+          selector:
+            number:
+              min: 100
+              max: 2000
+              step: 50
+              unit_of_measurement: ms
+        max_repeats:
+          name: Maximum repeats
+          description: Stop repeating after this many times, even if no release arrives.
+          default: 40
+          selector:
+            number:
+              min: 1
+              max: 200
+              mode: box
 
 mode: restart
 max_exceeded: silent
 
-trigger:
-  - platform: state
+variables:
+  hold_delay: !input hold_delay
+  repeat_interval: !input repeat_interval
+  max_repeats: !input max_repeats
+  event_type: "{{ trigger.to_state.attributes.event_type }}"
+  # The entity's state is the time of the event. A press followed by a release gives how long it was held.
+  event_ts: "{{ as_timestamp(trigger.to_state.state, 0) }}"
+  previous_ts: "{{ as_timestamp(trigger.from_state.state, 0) if trigger.from_state else 0 }}"
+  is_tap: "{{ previous_ts > 0 and (event_ts - previous_ts) * 1000 < hold_delay }}"
+
+triggers:
+  - trigger: state
     entity_id: !input remote_event_entity
+    not_to:
+      - unavailable
+      - unknown
 
-action:
-  - variables:
-      action_val: "{{ trigger.to_state.attributes.event_type }}"
-      # Measures how long the button was held before the 'release' event
-      duration: "{{ as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed | default(now())) }}"
+conditions:
+  # A real event is stamped now. An old event replayed when the entity comes back is ignored.
+  - "{{ event_ts > as_timestamp(now()) - 5 }}"
 
+actions:
   - choose:
-      # --- BUTTON 1 HOLD ---
-      - conditions: "{{ action_val == 'press_1' }}"
+      - conditions: "{{ event_type == 'press_1' }}"
         sequence:
-          - delay: { milliseconds: 300 }
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [{ condition: template, value_template: "true" }]
+              count: "{{ max_repeats }}"
               sequence:
                 - choose: []
                   default: !input button_1_hold
-                - delay: { milliseconds: 300 }
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # --- BUTTON 2 HOLD ---
-      - conditions: "{{ action_val == 'press_2' }}"
+      - conditions: "{{ event_type == 'press_2' }}"
         sequence:
-          - delay: { milliseconds: 300 }
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [{ condition: template, value_template: "true" }]
+              count: "{{ max_repeats }}"
               sequence:
                 - choose: []
                   default: !input button_2_hold
-                - delay: { milliseconds: 300 }
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # --- BUTTON 3 HOLD ---
-      - conditions: "{{ action_val == 'press_3' }}"
+      - conditions: "{{ event_type == 'press_3' }}"
         sequence:
-          - delay: { milliseconds: 300 }
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [{ condition: template, value_template: "true" }]
+              count: "{{ max_repeats }}"
               sequence:
                 - choose: []
                   default: !input button_3_hold
-                - delay: { milliseconds: 300 }
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # --- BUTTON 4 HOLD ---
-      - conditions: "{{ action_val == 'press_4' }}"
+      - conditions: "{{ event_type == 'press_4' }}"
         sequence:
-          - delay: { milliseconds: 300 }
+          - delay: { milliseconds: "{{ hold_delay }}" }
           - repeat:
-              while: [{ condition: template, value_template: "true" }]
+              count: "{{ max_repeats }}"
               sequence:
                 - choose: []
                   default: !input button_4_hold
-                - delay: { milliseconds: 300 }
+                - delay: { milliseconds: "{{ repeat_interval }}" }
 
-      # --- RELEASE LOGIC (TAPS) ---
-      - conditions:
-          - condition: template
-            value_template: "{{ action_val in ['release_1', 'release_2', 'release_3', 'release_4'] }}"
-        sequence:
-          - choose:
-              # If released quickly (under 350ms), execute the Tap action
-              - conditions: "{{ action_val == 'release_1' and duration < 0.35 }}"
-                sequence: !input button_1_press
-              - conditions: "{{ action_val == 'release_2' and duration < 0.35 }}"
-                sequence: !input button_2_press
-              - conditions: "{{ action_val == 'release_3' and duration < 0.35 }}"
-                sequence: !input button_3_press
-              - conditions: "{{ action_val == 'release_4' and duration < 0.35 }}"
-                sequence: !input button_4_press
-          - stop: "Execution complete"
+      # Release: the restart above already stopped any hold; a short press runs the tap action.
+      - conditions: "{{ event_type == 'release_1' and is_tap }}"
+        sequence: !input button_1_press
+      - conditions: "{{ event_type == 'release_2' and is_tap }}"
+        sequence: !input button_2_press
+      - conditions: "{{ event_type == 'release_3' and is_tap }}"
+        sequence: !input button_3_press
+      - conditions: "{{ event_type == 'release_4' and is_tap }}"
+        sequence: !input button_4_press
+      - conditions: "{{ event_type == 'release_1_and_3' and is_tap }}"
+        sequence: !input button_1_and_3_press
+      - conditions: "{{ event_type == 'release_2_and_4' and is_tap }}"
+        sequence: !input button_2_and_4_press
