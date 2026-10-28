@@ -1,0 +1,139 @@
+blueprint:
+  name: "Hue Dimmer: Cycle Scenes with the On Button"
+  description: >
+    Repeated presses on the On button step through scenes, as with the Hue bridge.
+    The first press after a pause gives the first scene; the next presses within the
+    cycle window give the next, and after the last it starts over. Off, up and down
+    are left alone (keep them on a direct binding or another automation).
+    Without scenes, the bridge's presets are used: Energize, Concentrate, Read, Relax
+    and Nightlight on lights with colour temperature or colour, and bright, relaxed
+    and night brightness on lights that only dim.
+    For Hue dimmers whose event entity in Zigbee2MQTT reports press / press_release
+    with a `button` attribute (on, off, up, down), such as RWL021 and RWL022.
+  domain: automation
+  source_url: https://raw.githubusercontent.com/egeback/home-assistant-blueprints/main/hue_dimmer_scene_cycle.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    remote_event_entity:
+      name: Remote Event Entity
+      description: Select the event entity (e.g., event.tims_rum_switch_action).
+      selector:
+        entity:
+          filter:
+            - domain: event
+    light:
+      name: Light
+      description: The light the presets are applied to. Not used when scenes are set.
+      selector:
+        entity:
+          filter:
+            - domain: light
+    scenes:
+      name: Scenes
+      description: >
+        Scenes to step through, in order. Leave empty to use the Hue presets on the light.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: scene
+    timing:
+      name: Timing
+      icon: mdi:timer-outline
+      collapsed: true
+      input:
+        cycle_window:
+          name: Cycle window
+          description: A press within this time of the previous one gives the next scene.
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 30
+              step: 0.5
+              unit_of_measurement: s
+        transition:
+          name: Transition
+          description: Fade time when changing scene.
+          default: 0.4
+          selector:
+            number:
+              min: 0
+              max: 5
+              step: 0.1
+              unit_of_measurement: s
+
+mode: single
+max_exceeded: silent
+
+variables:
+  light: !input light
+  scenes: !input scenes
+  cycle_window: !input cycle_window
+  transition: !input transition
+  # Hue bridge presets (Energize, Concentrate, Read, Relax, Nightlight).
+  colour_presets:
+    - { color_temp_kelvin: 6410, brightness: 254 }
+    - { color_temp_kelvin: 4292, brightness: 254 }
+    - { color_temp_kelvin: 2890, brightness: 254 }
+    - { color_temp_kelvin: 2237, brightness: 144 }
+    - { color_temp_kelvin: 2237, brightness: 1 }
+  dim_presets:
+    - { brightness: 254 }
+    - { brightness: 144 }
+    - { brightness: 1 }
+  has_colour: >
+    {{ state_attr(light, 'supported_color_modes') | default([], true)
+       | select('in', ['color_temp', 'hs', 'xy', 'rgb', 'rgbw', 'rgbww']) | list | count > 0 }}
+  steps: "{{ scenes if scenes | count > 0 else (colour_presets if has_colour else dim_presets) }}"
+  # The entity's state is the time of the event.
+  event_ts: "{{ as_timestamp(trigger.to_state.state, 0) }}"
+
+triggers:
+  - trigger: state
+    entity_id: !input remote_event_entity
+    attribute: event_type
+    to: press_release
+
+conditions:
+  - condition: state
+    entity_id: !input remote_event_entity
+    attribute: button
+    state: "on"
+  # A real event is stamped now. An old event replayed when the entity comes back is ignored.
+  - "{{ event_ts > as_timestamp(now()) - 5 }}"
+
+actions:
+  # One run covers a whole series of presses: mode single drops the new runs, and the
+  # wait below picks up the next press instead. The run ends when the window passes
+  # without a press, or when another button is pressed.
+  - repeat:
+      count: 100
+      sequence:
+        - variables:
+            step: "{{ steps[(repeat.index - 1) % steps | count] }}"
+        - if: "{{ scenes | count > 0 }}"
+          then:
+            - action: scene.turn_on
+              target:
+                entity_id: "{{ step }}"
+              data:
+                transition: "{{ transition }}"
+          else:
+            - action: light.turn_on
+              target:
+                entity_id: "{{ light }}"
+              data: "{{ dict(step, transition=transition) }}"
+        - wait_for_trigger:
+            - trigger: state
+              entity_id: !input remote_event_entity
+              attribute: event_type
+              to: press_release
+          timeout:
+            seconds: "{{ cycle_window }}"
+          continue_on_timeout: false
+        - if: "{{ wait.trigger.to_state.attributes.button != 'on' }}"
+          then:
+            - stop: Another button was pressed
